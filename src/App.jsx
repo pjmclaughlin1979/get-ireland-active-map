@@ -158,11 +158,11 @@ function ResultCard({ item, onClick }) {
 
 export default function App() {
   const mapRef = useRef(null);
+  const searchRef = useRef(null);
   const layerViewsRef = useRef([]);
   const refreshVisibleResultsRef = useRef(() => {});
   const selectedRef = useRef([]);
   const [selected, setSelected] = useState([]);
-  const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [resultsReady, setResultsReady] = useState(false);
   const [view, setView] = useState("map");
@@ -186,6 +186,34 @@ export default function App() {
             return { layerView, layer };
           } catch { return null; }
         }))).filter(Boolean);
+
+        const searchEl = searchRef.current;
+        if (searchEl) {
+          await searchEl.componentOnReady();
+          searchEl.sources = layers.map(layer => {
+            const preferredFields = ["Name", "Trail_Name", "Activity", "County", "Address", "EircodePostcode"];
+            const layerFieldNames = new Map((layer.fields || []).map(field => [field.name.toLowerCase(), field.name]));
+            const searchFields = preferredFields
+              .map(name => layerFieldNames.get(name.toLowerCase()))
+              .filter(Boolean);
+            const displayField = searchFields[0] || layer.objectIdField;
+            return {
+              layer,
+              name: layer.title,
+              placeholder: `Search ${layer.title.toLowerCase()}`,
+              searchFields: searchFields.length ? searchFields : [displayField],
+              displayField,
+              outFields: ["*"],
+              exactMatch: false,
+              suggestionsEnabled: true,
+              minSuggestCharacters: 2,
+              maxResults: 8,
+              maxSuggestions: 8,
+              zoomScale: 12000,
+            };
+          });
+          searchEl.activeSourceIndex = -1;
+        }
 
         const refreshVisibleResults = async () => {
           if (!mapEl.extent) return;
@@ -274,12 +302,8 @@ export default function App() {
 
   const shown = useMemo(() => {
     const source = resultsReady ? results : fallbackResults;
-    const searchTerms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    return source.filter(r => {
-      const text = `${r.title} ${r.activity} ${r.county} ${r.layer || ""}`.toLowerCase();
-      return searchTerms.every(term => text.includes(term));
-    }).slice(0, 50);
-  }, [results, resultsReady, query]);
+    return source.slice(0, 50);
+  }, [results, resultsReady]);
 
   const selectResult = async item => {
     if (!item.graphic || !mapRef.current) return;
@@ -296,7 +320,16 @@ export default function App() {
         <div className="toolbar">
           <button className="filter-trigger" onClick={() => setFiltersOpen(true)}>☷ Filters</button>
           <div className="tabs"><button className={view === "map" ? "active" : ""} onClick={() => setView("map")}>Map</button><button className={view === "list" ? "active" : ""} onClick={() => setView("list")}>List</button></div>
-          <label className="search"><span>⌕</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search activities or places"/><kbd>⌘ K</kbd></label>
+          <div className="search-component">
+            <arcgis-search
+              ref={searchRef}
+              reference-element="activity-map"
+              all-placeholder="Search addresses, clubs or trails"
+              active-source-index="-1"
+              max-results="8"
+              max-suggestions="8"
+            ></arcgis-search>
+          </div>
         </div>
         {!!selected.length && <div className="active-filter">
           <div className="active-filter-list">{selected.map(name => <button key={name} onClick={() => setSelected(values => values.filter(value => value !== name))}>{name} <span>×</span></button>)}</div>
@@ -304,7 +337,7 @@ export default function App() {
         </div>}
         <div className={`content ${view === "list" ? "list-mode" : ""} ${resultsCollapsed ? "results-collapsed" : ""}`}>
           <div className="map-wrap">
-            <arcgis-map ref={mapRef} item-id={WEBMAP_ID} portal-url={PORTAL_URL} popup-component-enabled="true">
+            <arcgis-map id="activity-map" ref={mapRef} item-id={WEBMAP_ID} portal-url={PORTAL_URL} popup-component-enabled="true">
               <arcgis-zoom slot="top-left"></arcgis-zoom>
               <arcgis-home slot="top-left"></arcgis-home>
               <arcgis-locate slot="top-left"></arcgis-locate>
