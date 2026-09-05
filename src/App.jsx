@@ -169,14 +169,15 @@ const fieldValue = (attrs, candidates) => {
   return key ? attrs[key] : "";
 };
 
-function Header() {
+function Header({ page }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   return <header className="topbar">
-    <a className="brand" href="#" aria-label="Get Ireland Active home">
+    <a className="brand" href="#home" aria-label="Get Ireland Active home">
       <span className="brand-pin"><span /></span>
       <span><strong>Éirigh Gníomhach in Éirinn</strong><small>Get Ireland Active</small></span>
     </a>
-    <nav><a href="#">Home</a><a className="active" href="#explore">Explore map</a><a href="#about">About</a><a href="#info">More information</a></nav>
-    <button className="menu" aria-label="Open menu">☰</button>
+    <nav className={menuOpen ? "open" : ""} onClick={() => setMenuOpen(false)}><a className={page === "home" ? "active" : ""} href="#home">Home</a><a className={page === "explore" ? "active" : ""} href="#explore">Explore map</a><a className={page === "about" ? "active" : ""} href="#about">About</a><a className={page === "info" ? "active" : ""} href="#info">More information</a></nav>
+    <button className="menu" onClick={() => setMenuOpen(value => !value)} aria-expanded={menuOpen} aria-label={menuOpen ? "Close menu" : "Open menu"}>{menuOpen ? "×" : "☰"}</button>
   </header>;
 }
 
@@ -257,7 +258,7 @@ function ResultCard({ item, onClick }) {
   </button>;
 }
 
-export default function App() {
+function ExplorePage() {
   const mapRef = useRef(null);
   const searchRef = useRef(null);
   const layerViewsRef = useRef([]);
@@ -419,9 +420,7 @@ export default function App() {
     setView("map");
   };
 
-  return <div className="app-shell">
-    <Header />
-    <main className={filtersCollapsed ? "left-collapsed" : ""}>
+  return <main className={filtersCollapsed ? "left-collapsed" : ""}>
       <Filters selected={selected} onToggle={name => setSelected(values => values.includes(name) ? values.filter(value => value !== name) : [...values, name])} open={filtersOpen} onClose={() => setFiltersOpen(false)} collapsed={filtersCollapsed} onCollapse={() => setFiltersCollapsed(value => !value)} advancedMode={advancedMode} setAdvancedMode={setAdvancedMode} advanced={advanced} setAdvanced={setAdvanced} />
       <section className="workspace">
         <div className="toolbar">
@@ -462,6 +461,60 @@ export default function App() {
           </aside>
         </div>
       </section>
-    </main>
+  </main>;
+}
+
+const themes = [
+  ["Accessible Activities", "Explore inclusive options for all ages and abilities.", "https://getirelandactive.ie/cdn/7/resources/images/widget_1854/1684739269890.jpeg"],
+  ["Family Friendly", "Trails and venues with family-friendly features.", "https://getirelandactive.ie/cdn/7/resources/images/widget_1873/1684739333018.png"],
+  ["Walking", "Where to enjoy Ireland's most popular physical activity.", "https://getirelandactive.ie/cdn/7/resources/images/widget_1881/1684739506625.jpeg"],
+  ["Get Outdoors", "Outdoor clubs, trails and locations.", "https://getirelandactive.ie/cdn/7/resources/images/widget_1864/1684739575544.jpeg"],
+  ["Dog Friendly", "Trails and places where dogs are welcome.", "https://getirelandactive.ie/cdn/7/resources/images/widget_1868/1684739630216.png"],
+  ["Work Out", "Gyms, leisure centres and swimming pools.", "https://getirelandactive.ie/cdn/7/resources/images/widget_1877/1684739691099.JPG"],
+];
+
+function HomePage() {
+  return <main className="site-page home-page">
+    <section className="home-hero">
+      <img src="https://getirelandactive.ie/cdn/7/resources/images/widget_3143/1751013467846.png" alt="Two parents and two small children running along a trail path in a forest" />
+      <div className="home-hero-copy"><span>Get Ireland Active</span><h1>Get active your way.</h1><p>Ireland is an island full of sport, recreation and adventure. With Get Ireland Active, discovering where is made easy. Explore thousands of opportunities, from casual to competitive, and find what suits you best.</p><p>Take control of your own activity journey. Explore trails, clubs, facilities and public places across the country—all in one place.</p><a className="primary-link" href="#explore">Explore the map <b>→</b></a></div>
+    </section>
+    <section className="home-intro"><span>Find your next activity</span><h2>Whatever your level, wherever you are</h2><p>Find an activity that works for you and where you can do it. Search and filter thousands of trails, clubs and places to be active.</p><a className="primary-link" href="#explore">Find activities <b>→</b></a></section>
+    <section className="themes-section"><span>Explore by theme</span><h2>More ways to get moving</h2><div className="theme-grid">{themes.map(([title, description, image]) => <a href="#explore" className="theme-card" key={title}><img src={image} alt="" loading="lazy" /><div><h3>{title}</h3><p>{description}</p><b>Explore →</b></div></a>)}</div></section>
+    <section className="involved"><div><span>Get involved</span><h2>Help shape Get Ireland Active</h2><p>Share feedback on the website and mobile app, and help us make it easier for everyone to find ways to move.</p><a href="https://survey123.arcgis.com/share/4511b13d3cd24ec2851f5c76c25ecddf" target="_blank" rel="noreferrer" className="light-link">Give feedback →</a></div><div><span>Download the app</span><h2>Find activities wherever you go</h2><div className="store-links"><a href="https://play.google.com/store/apps/details?id=ie.getirelandactive.android.app" target="_blank" rel="noreferrer">Google Play</a><a href="https://apps.apple.com/us/app/get-ireland-active/id6738063005" target="_blank" rel="noreferrer">App Store</a></div></div></section>
+  </main>;
+}
+
+function AboutPage() {
+  return <main className="site-page about-page">
+    <section className="page-hero"><span>About</span><h1>One national hub for getting active</h1><p>Get Ireland Active has been built to give people control of their own activity journey—to help find the right activity, in the right place, at the right time and at the right level.</p></section>
+    <section className="about-grid"><div><h2>Get Ireland Active</h2><p>The Get Ireland Active National Database is Ireland’s interactive activity, sport and recreation hub. It brings together resources from Government, Sport Ireland, local authorities, state agencies and national governing bodies of sport.</p><p>The easy-to-use interactive website unlocks opportunities on your doorstep and connects everyone who wants to move with the resources that can help them begin, improve or supercharge their activity journey.</p><a className="primary-link" href="#explore">Explore the map <b>→</b></a></div><aside><h3>The database includes</h3><ul><li>Sport and recreation</li><li>Public places</li><li>Trails</li><li>Amenities and information</li></ul></aside></section>
+    <section className="aims"><span>Our national ambition</span><h2>Better information for healthier communities</h2><p>Get Ireland Active also improves how sport and recreational facilities are planned and managed, providing richer insights for future investment and evidence-based decisions.</p><div className="aim-grid">{["Improve lives across Ireland", "Promote higher physical activity", "Improve health and wellbeing", "Provide facilities where needed", "Transform planning and funding", "Strengthen stakeholder collaboration"].map((aim, index) => <div key={aim}><b>{String(index + 1).padStart(2, "0")}</b><span>{aim}</span></div>)}</div></section>
+  </main>;
+}
+
+function MoreInfoPage() {
+  return <main className="story-page"><iframe title="Get Ireland Active More Information" src="https://storymaps.arcgis.com/collections/8065e0fe0dd04ec4a3bf6eb38585ee6a" allow="fullscreen" /></main>;
+}
+
+const pageFromHash = () => {
+  const page = window.location.hash.replace("#", "");
+  return ["home", "explore", "about", "info"].includes(page) ? page : "home";
+};
+
+export default function App() {
+  const [page, setPage] = useState(pageFromHash);
+  useEffect(() => {
+    const updatePage = () => setPage(pageFromHash());
+    window.addEventListener("hashchange", updatePage);
+    return () => window.removeEventListener("hashchange", updatePage);
+  }, []);
+
+  return <div className={`app-shell ${page !== "explore" ? "content-page-shell" : ""}`}>
+    <Header page={page} />
+    {page === "home" && <HomePage />}
+    {page === "explore" && <ExplorePage />}
+    {page === "about" && <AboutPage />}
+    {page === "info" && <MoreInfoPage />}
   </div>;
 }
