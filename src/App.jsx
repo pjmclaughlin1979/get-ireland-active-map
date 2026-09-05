@@ -289,6 +289,7 @@ function ExplorePage() {
   const searchRef = useRef(null);
   const layerViewsRef = useRef([]);
   const refreshVisibleResultsRef = useRef(() => {});
+  const viewRef = useRef("map");
   const filterStateRef = useRef({ selected: [], advanced: emptyAdvancedFilters(), advancedMode: false });
   const [selected, setSelected] = useState([]);
   const [advanced, setAdvanced] = useState(emptyAdvancedFilters);
@@ -300,6 +301,7 @@ function ExplorePage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [resultsCollapsed, setResultsCollapsed] = useState(false);
+  const [visibleResultCount, setVisibleResultCount] = useState(50);
 
   useEffect(() => {
     const mapEl = mapRef.current;
@@ -360,15 +362,26 @@ function ExplorePage() {
                 .filter(field => /name|title|club|trail|activity|sport|type|category|county|local_authority|location/i.test(field.name))
                 .map(field => field.name),
               ].filter(Boolean))];
-              const response = await layer.queryFeatures({
-                where: buildLayerFilter(layer, filterStateRef.current.selected, filterStateRef.current.advanced, filterStateRef.current.advancedMode) || "1=1",
-                geometry: mapEl.extent,
-                spatialRelationship: "intersects",
-                outFields,
-                returnGeometry: true,
-                num: 250,
-              });
-              const objectIds = response.features
+              const queryAllResults = viewRef.current === "list";
+              const pageSize = queryAllResults ? (layer.capabilities?.query?.maxRecordCount || 2000) : 250;
+              const features = [];
+              let start = 0;
+              let exceededTransferLimit = false;
+              do {
+                const response = await layer.queryFeatures({
+                  where: buildLayerFilter(layer, filterStateRef.current.selected, filterStateRef.current.advanced, filterStateRef.current.advancedMode) || "1=1",
+                  geometry: mapEl.extent,
+                  spatialRelationship: "intersects",
+                  outFields,
+                  returnGeometry: true,
+                  start,
+                  num: pageSize,
+                });
+                features.push(...response.features);
+                exceededTransferLimit = Boolean(response.exceededTransferLimit && response.features.length);
+                start += response.features.length;
+              } while (queryAllResults && exceededTransferLimit);
+              const objectIds = features
                 .map(graphic => graphic.attributes?.[layer.objectIdField])
                 .filter(value => value != null);
               let attachments = {};
@@ -380,7 +393,7 @@ function ExplorePage() {
                   });
                 } catch { /* Some public services disable attachment queries. */ }
               }
-              return response.features.map(graphic => {
+              return features.map(graphic => {
                 const a = graphic.attributes || {};
                 const firstImage = attachments[a[layer.objectIdField]]?.[0];
                 return {
@@ -432,12 +445,31 @@ function ExplorePage() {
     window.setTimeout(() => refreshVisibleResultsRef.current(), 0);
   }, [selected, advanced, advancedMode]);
 
-  const shown = useMemo(() => {
+  useEffect(() => {
+    viewRef.current = view;
+    window.setTimeout(() => refreshVisibleResultsRef.current(), 0);
+  }, [view]);
+
+  const sortedResults = useMemo(() => {
     const source = resultsReady ? results : fallbackResults;
     return [...source]
-      .sort((a, b) => a.title.localeCompare(b.title, "en", { sensitivity: "base", numeric: true }) * (sortDirection === "asc" ? 1 : -1))
-      .slice(0, 50);
+      .sort((a, b) => a.title.localeCompare(b.title, "en", { sensitivity: "base", numeric: true }) * (sortDirection === "asc" ? 1 : -1));
   }, [results, resultsReady, sortDirection]);
+
+  const shown = useMemo(
+    () => sortedResults.slice(0, view === "list" ? visibleResultCount : 50),
+    [sortedResults, view, visibleResultCount],
+  );
+
+  useEffect(() => setVisibleResultCount(50), [results, sortDirection, view]);
+
+  const loadMoreResults = event => {
+    if (view !== "list" || visibleResultCount >= sortedResults.length) return;
+    const element = event.currentTarget;
+    if (element.scrollHeight - element.scrollTop - element.clientHeight < 240) {
+      setVisibleResultCount(count => Math.min(count + 50, sortedResults.length));
+    }
+  };
 
   const selectResult = async item => {
     if (!item.graphic || !mapRef.current) return;
@@ -481,8 +513,8 @@ function ExplorePage() {
           <aside className="results">
             {view !== "list" && <button className="panel-collapse right" onClick={() => setResultsCollapsed(value => !value)} aria-label={resultsCollapsed ? "Expand results" : "Collapse results"} title={resultsCollapsed ? "Expand results" : "Collapse results"}>{resultsCollapsed ? "‹" : "›"}</button>}
             <div className="results-inner">
-              <div className="results-head"><div><span>Explore Ireland</span><h2>{shown.length} places to get active</h2></div><button className="sort-button" onClick={() => setSortDirection(direction => direction === "asc" ? "desc" : "asc")} aria-label={sortDirection === "asc" ? "Sort results Z to A" : "Sort results A to Z"} title={sortDirection === "asc" ? "Currently A–Z. Sort Z–A" : "Currently Z–A. Sort A–Z"}><span>{sortDirection === "asc" ? "A" : "Z"}</span><b>↓</b><span>{sortDirection === "asc" ? "Z" : "A"}</span></button></div>
-              <div className="cards">{shown.map((item, i) => <ResultCard key={`${item.title}-${i}`} item={item} onClick={() => selectResult(item)} />)}{!shown.length && <div className="empty"><b>No exact matches</b><span>Try clearing a filter or using a broader search.</span></div>}</div>
+              <div className="results-head"><div><span>Explore Ireland</span><h2>{sortedResults.length} places to get active</h2></div><button className="sort-button" onClick={() => setSortDirection(direction => direction === "asc" ? "desc" : "asc")} aria-label={sortDirection === "asc" ? "Sort results Z to A" : "Sort results A to Z"} title={sortDirection === "asc" ? "Currently A–Z. Sort Z–A" : "Currently Z–A. Sort A–Z"}><span>{sortDirection === "asc" ? "A" : "Z"}</span><b>↓</b><span>{sortDirection === "asc" ? "Z" : "A"}</span></button></div>
+              <div className="cards" onScroll={loadMoreResults}>{shown.map((item, i) => <ResultCard key={`${item.title}-${i}`} item={item} onClick={() => selectResult(item)} />)}{!shown.length && <div className="empty"><b>No exact matches</b><span>Try clearing a filter or using a broader search.</span></div>}{view === "list" && shown.length < sortedResults.length && <div className="loading-more" aria-live="polite">Showing {shown.length} of {sortedResults.length} places</div>}</div>
             </div>
           </aside>
         </div>
