@@ -81,7 +81,60 @@ const sqlFilters = {
 
 const sqlString = value => `'${String(value).replaceAll("'", "''")}'`;
 
-const buildLayerFilter = (layer, selections) => {
+const advancedOptions = {
+  activities: ["Aero Sports", "American Football", "Angling/Fishing", "Archery", "Athletics", "Badminton", "Basketball", "Baton Twirling", "Bocce/Boccia", "Boxing", "Camogie", "Canoeing/Kayaking/Paddling", "Caving", "Children's Play", "Clay Target Shooting", "Climbing", "Cricket", "Croquet", "Cycling", "Deaf Sports", "Diving", "Fencing", "Football/Soccer", "GAA Handball", "Gaelic Football", "Golf", "Group Fitness", "Gym/Workout", "Gymnastics", "Hillwalking/Mountaineering", "Hockey", "Horse Sport", "Horseshoe Pitching", "Hurling", "Ice Hockey", "Ice Skating", "Jogging/Running", "Judo", "Karate", "Ladies Gaelic Football", "Lawn Bowls", "Martial Arts", "Motorcycling", "Motorsport", "Olympic Handball", "Orienteering", "Pitch & Putt", "Power Boating", "Racquetball", "Road Bowling", "Rounders", "Rowing", "Rugby League", "Rugby Union", "Sailing", "Scuba Diving", "Skateboarding/Skating", "Skiing/Snowboarding", "Snooker/Billiards", "Snorkelling", "Special Olympics", "Squash", "Surfing", "Swimming", "Table Tennis", "Taekwondo", "Tennis", "Tenpin Bowling", "Triathlon", "Tug of War", "Vision Sports", "Volleyball", "Walking", "Water Polo", "Waterskiing/Wakeboarding", "Weightlifting/Powerlifting", "Wheelchair Sport", "Windsurfing", "Wrestling", "Yoga/Pilates"],
+  difficulties: ["Very Easy", "Easy", "Moderate", "Challenging", "Very Challenging"],
+  formats: ["Linear", "Loop", "Out and Back"],
+  trailTypes: ["Blueway", "Dinghy Sailing Trail", "Greenway", "Horse Riding Trail", "Long Distance Waymarked Way", "Mountain Access Trail", "Mountain Biking Trail", "Off Road Cycling Trail", "Paddling Trail", "Pilgrim Path", "Road Cycling Trail", "Snorkelling Trail", "Walking Trail"],
+  facilities: ["Aero Sports Facility", "Angling/Fishing Site", "Archery Facility", "Athletics Track/Arena", "Basketball Court", "Bowling Facility", "Boxing Gym", "Climbing Facility", "Court (Racket Sports/Handball)", "Cycle Lane", "Cycling Facility", "Equestrian Facility", "Golf Course", "Gym/Fitness Studio", "Hall (Sports/Multi-Purpose)", "Handball Alley/Wall", "Ice Rink", "Lawn Games Facility", "Leisure Centre/Sports Complex", "Martial Arts Centre", "Motorsports Venue", "Multi Use Games Area", "Orienteering Course", "Outdoor Education & Training Centre", "Outdoor Gym", "Pier/Jetty", "Pitch (Artificial)", "Pitch (Grass)", "Pitch & Putt Course", "Playground/Play Area", "Ropes Course/Zipline", "Rowing Venue", "Sailing Venue", "Shooting Facility", "Skating Facility", "Snooker/Billiards Facility", "Sports Arena/Stadium", "Surfing Spot", "Swimming Pool/Aquatic Centre", "Swimming Spot (Sea/Lake/River)", "Table Tennis Facility", "Tennis Court", "Walking Track/Path", "Water Sports Venue", "Winter Sports Venue"],
+  amenities: ["Baby Changing", "Bike Parking", "Bus Parking", "Cafe/Restaurant", "Car Parking", "Changing Facilities", "Childcare", "Defibrillator", "Dog Friendly", "EV Charging", "Internet Access", "Picnic Area", "Reception/Visitor Centre", "Showers", "Toilets"],
+  accessibility: ["Accessible Changing Facilities", "Accessible Entry Points", "Accessible Parking", "Accessible Seating Points", "Accessible Toilets"],
+};
+
+const emptyAdvancedFilters = () => ({
+  activities: [], disabilityCharter: false, under18: false, masters: false,
+  difficulties: [], formats: [], trailTypes: [], dogsAllowed: false,
+  minLength: "", maxLength: "", facilities: [], amenities: [], accessibility: [],
+});
+
+const listContainsAny = (field, values) => values.length
+  ? `(${values.map(value => `${field} LIKE '%${String(value).replaceAll("'", "''")}%'`).join(" OR ")})`
+  : null;
+
+const buildAdvancedFilter = (layer, filters) => {
+  const isTrailRouteLayer = /^trails$/i.test(layer.title || "");
+  const trailParts = [
+    filters.difficulties.length ? `Difficulty IN (${filters.difficulties.map(sqlString).join(", ")})` : null,
+    filters.formats.length ? `Format IN (${filters.formats.map(sqlString).join(", ")})` : null,
+    filters.trailTypes.length ? `TrailType IN (${filters.trailTypes.map(sqlString).join(", ")})` : null,
+    filters.dogsAllowed ? "DogsAllowed = 'Yes'" : null,
+    filters.minLength !== "" ? `LengthKm >= ${Number(filters.minLength) || 0}` : null,
+    filters.maxLength !== "" ? `LengthKm <= ${Number(filters.maxLength) || 0}` : null,
+  ].filter(Boolean);
+
+  if (isTrailRouteLayer) return trailParts.length ? trailParts.join(" AND ") : "1 = 0";
+
+  const clubParts = [
+    listContainsAny("Activity", filters.activities),
+    filters.disabilityCharter ? "DisabilityCharter = 'Yes'" : null,
+    filters.under18 ? "Under18Membership = 'Yes'" : null,
+    filters.masters ? "Masters = 'Yes'" : null,
+  ].filter(Boolean);
+  const locationParts = [
+    listContainsAny("Facilities", filters.facilities),
+    listContainsAny("Amenities", filters.amenities),
+    listContainsAny("AccessibleFeatures", filters.accessibility),
+  ].filter(Boolean);
+
+  const sections = [];
+  if (clubParts.length) sections.push(`(RecordType = 'Club' AND ${clubParts.join(" AND ")})`);
+  if (trailParts.length) sections.push(`(RecordType = 'Trail' AND ${trailParts.join(" AND ")})`);
+  if (locationParts.length) sections.push(`(RecordType = 'Activity Location' AND ${locationParts.join(" AND ")})`);
+  return sections.length ? sections.join(" OR ") : null;
+};
+
+const buildLayerFilter = (layer, selections, advanced, advancedMode = false) => {
+  if (advancedMode) return buildAdvancedFilter(layer, advanced);
   const definitions = selections.map(name => sqlFilters[name]).filter(Boolean);
   if (!definitions.length) return null;
 
@@ -127,10 +180,57 @@ function Header() {
   </header>;
 }
 
-function Filters({ selected, onToggle, open, onClose, collapsed, onCollapse }) {
+function MultiFilter({ label, options, values, onChange }) {
+  const toggle = value => onChange(values.includes(value) ? values.filter(item => item !== value) : [...values, value]);
+  return <div className="advanced-field">
+    <span className="advanced-label">{label}</span>
+    <details>
+      <summary>{values.length ? `${values.length} selected` : "Choose options"}<span>⌄</span></summary>
+      <div className="advanced-menu">
+        {options.map(option => <label key={option}><input type="checkbox" checked={values.includes(option)} onChange={() => toggle(option)} /><span>{option}</span></label>)}
+      </div>
+    </details>
+  </div>;
+}
+
+function AdvancedFilters({ filters, setFilters, onBack, onClose }) {
+  const set = (key, value) => setFilters(current => ({ ...current, [key]: value }));
+  const activeCount = Object.values(filters).reduce((count, value) => {
+    if (Array.isArray(value)) return count + value.length;
+    if (typeof value === "boolean") return count + (value ? 1 : 0);
+    return count + (value !== "" ? 1 : 0);
+  }, 0);
+  return <div className="advanced-view">
+    <div className="advanced-top"><button onClick={onBack}>← Basic filters</button><button onClick={() => setFilters(emptyAdvancedFilters())} disabled={!activeCount}>Clear all</button><button className="advanced-mobile-close" onClick={onClose} aria-label="Close filters">×</button></div>
+    <div className="panel-heading"><div><span>Refine results</span><h1>Advanced filters</h1></div></div>
+    <section className="advanced-section"><h2>Clubs & groups</h2>
+      <MultiFilter label="Sports & activities" options={advancedOptions.activities} values={filters.activities} onChange={value => set("activities", value)} />
+      <span className="advanced-label">Membership</span>
+      <div className="toggle-list">
+        {[["disabilityCharter", "Sport Inclusion Disability Charter"], ["under18", "Accepts under 18s"], ["masters", "Masters / older adults"]].map(([key, label]) => <label key={key}><input type="checkbox" checked={filters[key]} onChange={event => set(key, event.target.checked)} /><span>{label}</span></label>)}
+      </div>
+    </section>
+    <section className="advanced-section"><h2>Trails</h2>
+      <MultiFilter label="Difficulty" options={advancedOptions.difficulties} values={filters.difficulties} onChange={value => set("difficulties", value)} />
+      <MultiFilter label="Format" options={advancedOptions.formats} values={filters.formats} onChange={value => set("formats", value)} />
+      <MultiFilter label="Trail type" options={advancedOptions.trailTypes} values={filters.trailTypes} onChange={value => set("trailTypes", value)} />
+      <div className="toggle-list"><label><input type="checkbox" checked={filters.dogsAllowed} onChange={event => set("dogsAllowed", event.target.checked)} /><span>Dogs allowed</span></label></div>
+      <span className="advanced-label">Length (km)</span>
+      <div className="range-fields"><input type="number" min="0" placeholder="Min" value={filters.minLength} onChange={event => set("minLength", event.target.value)} /><span>to</span><input type="number" min="0" placeholder="Max" value={filters.maxLength} onChange={event => set("maxLength", event.target.value)} /></div>
+    </section>
+    <section className="advanced-section"><h2>Locations</h2>
+      <MultiFilter label="Facilities" options={advancedOptions.facilities} values={filters.facilities} onChange={value => set("facilities", value)} />
+      <MultiFilter label="Amenities" options={advancedOptions.amenities} values={filters.amenities} onChange={value => set("amenities", value)} />
+      <MultiFilter label="Accessibility" options={advancedOptions.accessibility} values={filters.accessibility} onChange={value => set("accessibility", value)} />
+    </section>
+  </div>;
+}
+
+function Filters({ selected, onToggle, open, onClose, collapsed, onCollapse, advancedMode, setAdvancedMode, advanced, setAdvanced }) {
   return <aside className={`filters ${open ? "open" : ""} ${collapsed ? "collapsed" : ""}`}>
     <button className="panel-collapse left" onClick={onCollapse} aria-label={collapsed ? "Expand filters" : "Collapse filters"} title={collapsed ? "Expand filters" : "Collapse filters"}>{collapsed ? "›" : "‹"}</button>
     <div className="filter-inner">
+    {advancedMode ? <AdvancedFilters filters={advanced} setFilters={setAdvanced} onBack={() => setAdvancedMode(false)} onClose={onClose} /> : <>
     <div className="panel-heading"><div><span>Discover</span><h1>Find your way to move</h1></div><button onClick={onClose} aria-label="Close filters">×</button></div>
     <p className="intro">Choose an activity, trail or place and start exploring what’s nearby.</p>
     {groups.map(group => <section className="filter-group" key={group.title} style={{"--accent": group.color}}>
@@ -141,7 +241,8 @@ function Filters({ selected, onToggle, open, onClose, collapsed, onCollapse }) {
         </button>)}
       </div>
     </section>)}
-    <button className="advanced">Advanced filters <span>＋</span></button>
+    <button className="advanced" onClick={() => setAdvancedMode(true)}>Advanced filters <span>＋</span></button>
+    </>}
     </div>
   </aside>;
 }
@@ -161,8 +262,10 @@ export default function App() {
   const searchRef = useRef(null);
   const layerViewsRef = useRef([]);
   const refreshVisibleResultsRef = useRef(() => {});
-  const selectedRef = useRef([]);
+  const filterStateRef = useRef({ selected: [], advanced: emptyAdvancedFilters(), advancedMode: false });
   const [selected, setSelected] = useState([]);
+  const [advanced, setAdvanced] = useState(emptyAdvancedFilters);
+  const [advancedMode, setAdvancedMode] = useState(false);
   const [results, setResults] = useState([]);
   const [resultsReady, setResultsReady] = useState(false);
   const [view, setView] = useState("map");
@@ -230,7 +333,7 @@ export default function App() {
                 .map(field => field.name),
               ].filter(Boolean))];
               const response = await layer.queryFeatures({
-                where: buildLayerFilter(layer, selectedRef.current) || "1=1",
+                where: buildLayerFilter(layer, filterStateRef.current.selected, filterStateRef.current.advanced, filterStateRef.current.advancedMode) || "1=1",
                 geometry: mapEl.extent,
                 spatialRelationship: "intersects",
                 outFields,
@@ -289,16 +392,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    selectedRef.current = selected;
+    filterStateRef.current = { selected, advanced, advancedMode };
     layerViewsRef.current.forEach(({ layerView, layer }) => {
-      if (!selected.length) {
+      const where = buildLayerFilter(layer, selected, advanced, advancedMode);
+      if (!where) {
         layerView.filter = null;
         return;
       }
-      layerView.filter = { where: buildLayerFilter(layer, selected) };
+      layerView.filter = { where };
     });
     window.setTimeout(() => refreshVisibleResultsRef.current(), 0);
-  }, [selected]);
+  }, [selected, advanced, advancedMode]);
 
   const shown = useMemo(() => {
     const source = resultsReady ? results : fallbackResults;
@@ -315,7 +419,7 @@ export default function App() {
   return <div className="app-shell">
     <Header />
     <main className={filtersCollapsed ? "left-collapsed" : ""}>
-      <Filters selected={selected} onToggle={name => setSelected(values => values.includes(name) ? values.filter(value => value !== name) : [...values, name])} open={filtersOpen} onClose={() => setFiltersOpen(false)} collapsed={filtersCollapsed} onCollapse={() => setFiltersCollapsed(value => !value)} />
+      <Filters selected={selected} onToggle={name => setSelected(values => values.includes(name) ? values.filter(value => value !== name) : [...values, name])} open={filtersOpen} onClose={() => setFiltersOpen(false)} collapsed={filtersCollapsed} onCollapse={() => setFiltersCollapsed(value => !value)} advancedMode={advancedMode} setAdvancedMode={setAdvancedMode} advanced={advanced} setAdvanced={setAdvanced} />
       <section className="workspace">
         <div className="toolbar">
           <button className="filter-trigger" onClick={() => setFiltersOpen(true)}>☷ Filters</button>
@@ -331,10 +435,11 @@ export default function App() {
             ></arcgis-search>
           </div>
         </div>
-        {!!selected.length && <div className="active-filter">
+        {!advancedMode && !!selected.length && <div className="active-filter">
           <div className="active-filter-list">{selected.map(name => <button key={name} onClick={() => setSelected(values => values.filter(value => value !== name))}>{name} <span>×</span></button>)}</div>
           <button className="clear-filters" onClick={() => setSelected([])}>Clear all</button>
         </div>}
+        {advancedMode && buildAdvancedFilter({ title: "All Data" }, advanced) && <div className="active-filter"><span>Advanced filters applied</span><button className="clear-filters" onClick={() => setAdvanced(emptyAdvancedFilters())}>Clear all</button></div>}
         <div className={`content ${view === "list" ? "list-mode" : ""} ${resultsCollapsed ? "results-collapsed" : ""}`}>
           <div className="map-wrap">
             <arcgis-map id="activity-map" ref={mapRef} item-id={WEBMAP_ID} portal-url={PORTAL_URL} popup-component-enabled="true">
