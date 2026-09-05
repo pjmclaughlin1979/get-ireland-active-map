@@ -488,8 +488,16 @@ function HomePage() {
 function AboutPage() {
   return <main className="site-page about-page">
     <section className="page-hero"><span>About</span><h1>One national hub for getting active</h1><p>Get Ireland Active has been built to give people control of their own activity journey—to help find the right activity, in the right place, at the right time and at the right level.</p></section>
+    <section className="about-video-section">
+      <div className="about-video-heading"><span>Get Ireland Active</span><h2>Get Ireland Active is now live</h2><p>Discover the national database for finding clubs, trails, amenities and more.</p></div>
+      <div className="video-frame"><iframe title="Get Ireland Active is now live" src="https://www.youtube-nocookie.com/embed/g-6TYFt1-kQ" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /></div>
+    </section>
     <section className="about-grid"><div><h2>Get Ireland Active</h2><p>The Get Ireland Active National Database is Ireland’s interactive activity, sport and recreation hub. It brings together resources from Government, Sport Ireland, local authorities, state agencies and national governing bodies of sport.</p><p>The easy-to-use interactive website unlocks opportunities on your doorstep and connects everyone who wants to move with the resources that can help them begin, improve or supercharge their activity journey.</p><a className="primary-link" href="#explore">Explore the map <b>→</b></a></div><aside><h3>The database includes</h3><ul><li>Sport and recreation</li><li>Public places</li><li>Trails</li><li>Amenities and information</li></ul></aside></section>
     <section className="aims"><span>Our national ambition</span><h2>Better information for healthier communities</h2><p>Get Ireland Active also improves how sport and recreational facilities are planned and managed, providing richer insights for future investment and evidence-based decisions.</p><div className="aim-grid">{["Improve lives across Ireland", "Promote higher physical activity", "Improve health and wellbeing", "Provide facilities where needed", "Transform planning and funding", "Strengthen stakeholder collaboration"].map((aim, index) => <div key={aim}><b>{String(index + 1).padStart(2, "0")}</b><span>{aim}</span></div>)}</div></section>
+    <section className="about-video-section stakeholder-video">
+      <div className="about-video-heading"><span>Working together</span><h2>Get Ireland Active stakeholders</h2><p>See how national and local partners are working together to support active communities throughout Ireland.</p></div>
+      <div className="video-frame"><iframe title="Get Ireland Active stakeholders" src="https://player.vimeo.com/video/896120727?dnt=1" loading="lazy" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /></div>
+    </section>
   </main>;
 }
 
