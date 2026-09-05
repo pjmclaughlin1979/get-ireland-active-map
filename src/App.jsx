@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const WEBMAP_ID = import.meta.env.VITE_ARCGIS_WEBMAP_ID || "7f0c7b29b88b4e71afabe10c20ce79b6";
 const PORTAL_URL = import.meta.env.VITE_ARCGIS_PORTAL_URL || "https://esriireland.maps.arcgis.com";
+const LIST_TOTAL_CACHE_PREFIX = "gia-list-total-v1:";
 
 const groups = [
   { title: "Clubs & groups", color: "#9c218d", icon: "✦", items: [
@@ -302,6 +303,25 @@ function ExplorePage() {
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [resultsCollapsed, setResultsCollapsed] = useState(false);
   const [visibleResultCount, setVisibleResultCount] = useState(50);
+  const [listTotal, setListTotal] = useState(null);
+
+  const listCacheKey = () => {
+    const extent = mapRef.current?.extent;
+    if (!extent) return null;
+    const roundedExtent = [extent.xmin, extent.ymin, extent.xmax, extent.ymax]
+      .map(value => Math.round(value / 1000) * 1000);
+    const filters = filterStateRef.current;
+    return `${LIST_TOTAL_CACHE_PREFIX}${JSON.stringify({ extent: roundedExtent, selected: filters.selected, advanced: filters.advancedMode ? filters.advanced : null })}`;
+  };
+
+  const readCachedListTotal = () => {
+    const key = listCacheKey();
+    if (!key) return null;
+    try {
+      const cached = JSON.parse(localStorage.getItem(key));
+      return Number.isFinite(cached?.total) ? cached.total : null;
+    } catch { return null; }
+  };
 
   useEffect(() => {
     const mapEl = mapRef.current;
@@ -351,6 +371,9 @@ function ExplorePage() {
         const refreshVisibleResults = async () => {
           if (!mapEl.extent) return;
           const generation = ++queryGeneration;
+          const queryAllResults = viewRef.current === "list";
+          const cacheKey = queryAllResults ? listCacheKey() : null;
+          if (queryAllResults) setListTotal(readCachedListTotal());
           const batches = await Promise.all(layerViewsRef.current.map(async ({ layerView, layer }) => {
             try {
               const withinScaleRange = (!layer.minScale || mapEl.scale <= layer.minScale)
@@ -362,7 +385,6 @@ function ExplorePage() {
                 .filter(field => /name|title|club|trail|activity|sport|type|category|county|local_authority|location/i.test(field.name))
                 .map(field => field.name),
               ].filter(Boolean))];
-              const queryAllResults = viewRef.current === "list";
               const pageSize = queryAllResults ? (layer.capabilities?.query?.maxRecordCount || 2000) : 250;
               const features = [];
               let start = 0;
@@ -411,8 +433,15 @@ function ExplorePage() {
             }
           }));
           if (generation === queryGeneration) {
-            setResults(batches.flat());
+            const nextResults = batches.flat();
+            setResults(nextResults);
             setResultsReady(true);
+            if (queryAllResults) {
+              setListTotal(nextResults.length);
+              if (cacheKey) {
+                try { localStorage.setItem(cacheKey, JSON.stringify({ total: nextResults.length, updatedAt: Date.now() })); } catch { /* Storage can be unavailable in private browsing. */ }
+              }
+            }
           }
         };
 
@@ -471,6 +500,11 @@ function ExplorePage() {
     }
   };
 
+  const showListView = () => {
+    setListTotal(readCachedListTotal());
+    setView("list");
+  };
+
   const selectResult = async item => {
     if (!item.graphic || !mapRef.current) return;
     await mapRef.current.goTo({ target: item.graphic.geometry, zoom: 14 });
@@ -483,7 +517,7 @@ function ExplorePage() {
       <section className="workspace">
         <div className="toolbar">
           <button className="filter-trigger" onClick={() => setFiltersOpen(true)}>☷ Filters</button>
-          <div className="tabs"><button className={view === "map" ? "active" : ""} onClick={() => setView("map")}>Map</button><button className={view === "list" ? "active" : ""} onClick={() => setView("list")}>List</button></div>
+          <div className="tabs"><button className={view === "map" ? "active" : ""} onClick={() => setView("map")}>Map</button><button className={view === "list" ? "active" : ""} onClick={showListView}>List</button></div>
           <div className="search-component">
             <arcgis-search
               ref={searchRef}
@@ -513,7 +547,7 @@ function ExplorePage() {
           <aside className="results">
             {view !== "list" && <button className="panel-collapse right" onClick={() => setResultsCollapsed(value => !value)} aria-label={resultsCollapsed ? "Expand results" : "Collapse results"} title={resultsCollapsed ? "Expand results" : "Collapse results"}>{resultsCollapsed ? "‹" : "›"}</button>}
             <div className="results-inner">
-              <div className="results-head"><div><span>Explore Ireland</span><h2>{sortedResults.length} places to get active</h2></div><button className="sort-button" onClick={() => setSortDirection(direction => direction === "asc" ? "desc" : "asc")} aria-label={sortDirection === "asc" ? "Sort results Z to A" : "Sort results A to Z"} title={sortDirection === "asc" ? "Currently A–Z. Sort Z–A" : "Currently Z–A. Sort A–Z"}><span>{sortDirection === "asc" ? "A" : "Z"}</span><b>↓</b><span>{sortDirection === "asc" ? "Z" : "A"}</span></button></div>
+              <div className="results-head"><div><span>Explore Ireland</span><h2>{view === "list" && listTotal == null ? "Loading places…" : `${view === "list" ? listTotal : sortedResults.length} places to get active`}</h2></div><button className="sort-button" onClick={() => setSortDirection(direction => direction === "asc" ? "desc" : "asc")} aria-label={sortDirection === "asc" ? "Sort results Z to A" : "Sort results A to Z"} title={sortDirection === "asc" ? "Currently A–Z. Sort Z–A" : "Currently Z–A. Sort A–Z"}><span>{sortDirection === "asc" ? "A" : "Z"}</span><b>↓</b><span>{sortDirection === "asc" ? "Z" : "A"}</span></button></div>
               <div className="cards" onScroll={loadMoreResults}>{shown.map((item, i) => <ResultCard key={`${item.title}-${i}`} item={item} onClick={() => selectResult(item)} />)}{!shown.length && <div className="empty"><b>No exact matches</b><span>Try clearing a filter or using a broader search.</span></div>}{view === "list" && shown.length < sortedResults.length && <div className="loading-more" aria-live="polite">Showing {shown.length} of {sortedResults.length} places</div>}</div>
             </div>
           </aside>
