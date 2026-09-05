@@ -268,6 +268,7 @@ export default function App() {
   const [advancedMode, setAdvancedMode] = useState(false);
   const [results, setResults] = useState([]);
   const [resultsReady, setResultsReady] = useState(false);
+  const [sortDirection, setSortDirection] = useState("asc");
   const [view, setView] = useState("map");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
@@ -406,8 +407,10 @@ export default function App() {
 
   const shown = useMemo(() => {
     const source = resultsReady ? results : fallbackResults;
-    return source.slice(0, 50);
-  }, [results, resultsReady]);
+    return [...source]
+      .sort((a, b) => a.title.localeCompare(b.title, "en", { sensitivity: "base", numeric: true }) * (sortDirection === "asc" ? 1 : -1))
+      .slice(0, 50);
+  }, [results, resultsReady, sortDirection]);
 
   const selectResult = async item => {
     if (!item.graphic || !mapRef.current) return;
@@ -453,7 +456,7 @@ export default function App() {
           <aside className="results">
             <button className="panel-collapse right" onClick={() => setResultsCollapsed(value => !value)} aria-label={resultsCollapsed ? "Expand results" : "Collapse results"} title={resultsCollapsed ? "Expand results" : "Collapse results"}>{resultsCollapsed ? "‹" : "›"}</button>
             <div className="results-inner">
-              <div className="results-head"><div><span>Explore Ireland</span><h2>{shown.length} places to get active</h2></div><button aria-label="Sort results">↕</button></div>
+              <div className="results-head"><div><span>Explore Ireland</span><h2>{shown.length} places to get active</h2></div><button className="sort-button" onClick={() => setSortDirection(direction => direction === "asc" ? "desc" : "asc")} aria-label={sortDirection === "asc" ? "Sort results Z to A" : "Sort results A to Z"} title={sortDirection === "asc" ? "Currently A–Z. Sort Z–A" : "Currently Z–A. Sort A–Z"}><span>{sortDirection === "asc" ? "A" : "Z"}</span><b>↓</b><span>{sortDirection === "asc" ? "Z" : "A"}</span></button></div>
               <div className="cards">{shown.map((item, i) => <ResultCard key={`${item.title}-${i}`} item={item} onClick={() => selectResult(item)} />)}{!shown.length && <div className="empty"><b>No exact matches</b><span>Try clearing a filter or using a broader search.</span></div>}</div>
             </div>
           </aside>
