@@ -187,10 +187,10 @@ function Footer() {
       <div className="footer-column">
         <h2>Useful Information</h2>
         <nav aria-label="Useful information">
-          <a href="https://www.getirelandactive.ie/?page=Contact" target="_blank" rel="noreferrer">Contact / Feedback</a>
-          <a href="https://www.getirelandactive.ie/?page=Stakeholders" target="_blank" rel="noreferrer">Stakeholders</a>
-          <a href="https://www.getirelandactive.ie/?page=Privacy" target="_blank" rel="noreferrer">Privacy and Data Policy</a>
-          <a href="https://www.getirelandactive.ie/?page=Data" target="_blank" rel="noreferrer">Get the Data</a>
+          <a href="https://survey123.arcgis.com/share/4511b13d3cd24ec2851f5c76c25ecddf" target="_blank" rel="noreferrer">Contact / Feedback</a>
+          <a href="#stakeholders">Stakeholders</a>
+          <a href="#privacy">Privacy and Data Policy</a>
+          <a href="#data">Get the Data</a>
         </nav>
         <a className="footer-brand" href="#about" aria-label="About Get Ireland Active">
           <span className="footer-pin"><span /></span>
@@ -531,9 +531,13 @@ function MoreInfoPage() {
   return <main className="story-page"><iframe title="Get Ireland Active More Information" src="https://storymaps.arcgis.com/collections/8065e0fe0dd04ec4a3bf6eb38585ee6a" allow="fullscreen" /></main>;
 }
 
+function StoryPage({ title, src }) {
+  return <main className="story-page"><iframe title={title} src={src} allow="fullscreen" /></main>;
+}
+
 const pageFromHash = () => {
   const page = window.location.hash.replace("#", "");
-  return ["home", "explore", "about", "info"].includes(page) ? page : "home";
+  return ["home", "explore", "about", "info", "privacy", "data", "stakeholders"].includes(page) ? page : "home";
 };
 
 export default function App() {
@@ -550,6 +554,9 @@ export default function App() {
     {page === "explore" && <ExplorePage />}
     {page === "about" && <AboutPage />}
     {page === "info" && <MoreInfoPage />}
+    {page === "privacy" && <StoryPage title="Get Ireland Active Privacy and Data Policy" src="https://storymaps.arcgis.com/stories/967157b5b1204b4cbd5dee17b7f3b5f3" />}
+    {page === "data" && <StoryPage title="Get Ireland Active Data" src="https://storymaps.arcgis.com/stories/01e15f4f2b134c7ab92b586befca977e" />}
+    {page === "stakeholders" && <StoryPage title="Get Ireland Active Stakeholders" src="https://storymaps.arcgis.com/stories/a135110d94c04cefb406c8753f69c3e3" />}
     {page !== "explore" && <Footer />}
   </div>;
 }
