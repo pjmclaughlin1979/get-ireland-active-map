@@ -181,6 +181,32 @@ function Header({ page }) {
   </header>;
 }
 
+function Footer() {
+  return <footer className="site-footer">
+    <div className="footer-inner">
+      <div className="footer-column">
+        <h2>Useful Information</h2>
+        <nav aria-label="Useful information">
+          <a href="https://www.getirelandactive.ie/?page=Contact" target="_blank" rel="noreferrer">Contact / Feedback</a>
+          <a href="https://www.getirelandactive.ie/?page=Stakeholders" target="_blank" rel="noreferrer">Stakeholders</a>
+          <a href="https://www.getirelandactive.ie/?page=Privacy" target="_blank" rel="noreferrer">Privacy and Data Policy</a>
+          <a href="https://www.getirelandactive.ie/?page=Data" target="_blank" rel="noreferrer">Get the Data</a>
+        </nav>
+        <a className="footer-brand" href="#about" aria-label="About Get Ireland Active">
+          <span className="footer-pin"><span /></span>
+          <span><strong>Éirigh Gníomhach in Éirinn</strong><small>Get Ireland Active</small></span>
+        </a>
+      </div>
+      <div className="footer-column footer-social">
+        <h2>Follow us on social media</h2>
+        <a href="https://www.facebook.com/getirelandactive" target="_blank" rel="noreferrer"><span aria-hidden="true">f</span>facebook.com/GetIrelandActive</a>
+        <a href="https://www.instagram.com/getirelandactive/?hl=en" target="_blank" rel="noreferrer"><span aria-hidden="true">◎</span>instagram.com/GetIrelandActive</a>
+        <a href="https://www.youtube.com/@GetIreActive" target="_blank" rel="noreferrer"><span aria-hidden="true">▶</span>youtube.com/@GetIreActive</a>
+      </div>
+    </div>
+  </footer>;
+}
+
 function MultiFilter({ label, options, values, onChange }) {
   const toggle = value => onChange(values.includes(value) ? values.filter(item => item !== value) : [...values, value]);
   return <div className="advanced-field">
@@ -524,5 +550,6 @@ export default function App() {
     {page === "explore" && <ExplorePage />}
     {page === "about" && <AboutPage />}
     {page === "info" && <MoreInfoPage />}
+    {page !== "explore" && <Footer />}
   </div>;
 }
