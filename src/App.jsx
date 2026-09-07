@@ -316,7 +316,17 @@ function ExplorePage() {
       .root, .main-container { border-radius:16px; }
       :host { --calcite-flow-corner-radius:16px; }
     `);
+    const expandStyle = new CSSStyleSheet();
+    expandStyle.replaceSync(`
+      .popover-content { border-radius:16px; overflow:hidden; }
+    `);
     const stylePopup = () => {
+      mapEl.parentElement.querySelectorAll("arcgis-expand").forEach(expand => {
+        const root = expand.shadowRoot;
+        if (!root || styledRoots.has(root)) return;
+        root.adoptedStyleSheets = [...root.adoptedStyleSheets, expandStyle];
+        styledRoots.add(root);
+      });
       const root = mapEl.shadowRoot?.querySelector("arcgis-popup")?.shadowRoot;
       if (!root || styledRoots.has(root)) return;
       root.adoptedStyleSheets = [...root.adoptedStyleSheets, popupStyle];
@@ -338,7 +348,7 @@ function ExplorePage() {
       observer?.disconnect();
       mapEl.removeEventListener("arcgisReady", stylePopup);
       styledRoots.forEach(root => {
-        root.adoptedStyleSheets = root.adoptedStyleSheets.filter(sheet => sheet !== popupStyle);
+        root.adoptedStyleSheets = root.adoptedStyleSheets.filter(sheet => sheet !== popupStyle && sheet !== expandStyle);
       });
     };
   }, []);
