@@ -305,6 +305,44 @@ function ExplorePage() {
   const [visibleResultCount, setVisibleResultCount] = useState(50);
   const [listTotal, setListTotal] = useState(null);
 
+  useEffect(() => {
+    const mapEl = mapRef.current;
+    let disposed = false;
+    let observer;
+    const styledRoots = new Set();
+    // ArcGIS 5.1 exposes no CSS part or radius token for the popup shell.
+    const popupStyle = new CSSStyleSheet();
+    popupStyle.replaceSync(`
+      .root, .main-container { border-radius:16px; }
+      :host { --calcite-flow-corner-radius:16px; }
+    `);
+    const stylePopup = () => {
+      const root = mapEl.shadowRoot?.querySelector("arcgis-popup")?.shadowRoot;
+      if (!root || styledRoots.has(root)) return;
+      root.adoptedStyleSheets = [...root.adoptedStyleSheets, popupStyle];
+      styledRoots.add(root);
+    };
+    const connect = async () => {
+      await customElements.whenDefined("arcgis-map");
+      if (disposed) return;
+      await mapEl.componentOnReady();
+      if (disposed || !mapEl.shadowRoot) return;
+      observer = new MutationObserver(stylePopup);
+      observer.observe(mapEl.shadowRoot, { childList:true, subtree:true });
+      mapEl.addEventListener("arcgisReady", stylePopup);
+      stylePopup();
+    };
+    connect();
+    return () => {
+      disposed = true;
+      observer?.disconnect();
+      mapEl.removeEventListener("arcgisReady", stylePopup);
+      styledRoots.forEach(root => {
+        root.adoptedStyleSheets = root.adoptedStyleSheets.filter(sheet => sheet !== popupStyle);
+      });
+    };
+  }, []);
+
   const listCacheKey = () => {
     const extent = mapRef.current?.extent;
     if (!extent) return null;
