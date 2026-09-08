@@ -24,6 +24,6 @@ The application requires ArcGIS user authentication before mounting its pages or
 Register an ArcGIS OAuth application and add these redirect URLs:
 Update to your own urls....
 
-Set the public client ID as `VITE_ARCGIS_CLIENT_ID` in your local `.env` and as a GitHub Actions repository variable of the same name. Restart Vite after changing `.env`. The default portal is `https://esriireland.maps.arcgis.com`.
+Set the public client ID as `VITE_ARCGIS_CLIENT_ID` in your local `.env` and as a GitHub Actions repository variable of the same name. Restart Vite after changing `.env`. 
 
 Without a client ID the site shows a configuration message and does not load the map. End-to-end OAuth verification requires a registered client ID. Organisation/group admission rules remain pending the owner's access requirements; the current integration checks for an authenticated portal user only. Restrict private web maps and all underlying services using ArcGIS organisation/group sharing. The static frontend itself is publicly downloadable on GitHub Pages and cannot enforce data secrecy. Sign out clears this application's SDK credentials; it does not terminate an organisation-wide SSO session.
