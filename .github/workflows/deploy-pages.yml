@@ -32,6 +32,8 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+        env:
+          VITE_ARCGIS_CLIENT_ID: ${{ vars.VITE_ARCGIS_CLIENT_ID }}
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact

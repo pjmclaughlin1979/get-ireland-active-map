@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import DisplayCoordinates from "./DisplayCoordinates.jsx";
 
 const WEBMAP_ID = import.meta.env.VITE_ARCGIS_WEBMAP_ID || "7f0c7b29b88b4e71afabe10c20ce79b6";
 const PORTAL_URL = import.meta.env.VITE_ARCGIS_PORTAL_URL || "https://esriireland.maps.arcgis.com";
@@ -590,6 +591,7 @@ function ExplorePage() {
               <arcgis-locate slot="top-left"></arcgis-locate>
               <arcgis-expand slot="bottom-left" expand-tooltip="Legend"><arcgis-legend></arcgis-legend></arcgis-expand>
               <arcgis-expand slot="bottom-left" expand-tooltip="Layers"><arcgis-layer-list></arcgis-layer-list></arcgis-expand>
+              <DisplayCoordinates mapRef={mapRef} />
             </arcgis-map>
           </div>
           <aside className="results">
