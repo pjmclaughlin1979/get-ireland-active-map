@@ -22,9 +22,7 @@ Pushes to `main` are automatically built and deployed through GitHub Pages.
 The application requires ArcGIS user authentication before mounting its pages or map. It uses the Maps SDK IdentityManager with OAuth authorization-code flow (PKCE); no client secret belongs in this browser application.
 
 Register an ArcGIS OAuth application and add these redirect URLs:
-
-- `http://127.0.0.1:5173/`
-- `https://pjmclaughlin1979.github.io/get-ireland-active-map/`
+Update to your own urls....
 
 Set the public client ID as `VITE_ARCGIS_CLIENT_ID` in your local `.env` and as a GitHub Actions repository variable of the same name. Restart Vite after changing `.env`. The default portal is `https://esriireland.maps.arcgis.com`.
 
