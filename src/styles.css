@@ -101,3 +101,5 @@ main.left-collapsed { grid-template-columns:48px 1fr; }.filters.collapsed { padd
 .auth-card [role=alert] { color:#9a3412; }
 .account-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 20px; background:#e4f3ee; color:#173d35; font-size:12px; }
 .account-bar button { padding:5px 12px; }
+.install-app { position:fixed; z-index:50; right:16px; bottom:calc(16px + env(safe-area-inset-bottom)); border:1px solid white; border-radius:999px; background:#306f5b; color:white; padding:12px 20px; box-shadow:0 4px 18px #173d3530; font:700 14px Manrope,sans-serif; cursor:pointer; }
+.install-app:focus-visible { outline:3px solid #173d35; outline-offset:3px; }
